@@ -1,4 +1,4 @@
-# 🛡️ Advanced Email Security Gateway
+# 🛡️ Advanced Phishing Emails Security-Gateway
 
 ## Enterprise-Grade Phishing Detection with Hybrid AI Architecture
 
