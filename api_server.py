@@ -75,9 +75,9 @@ async def scan_eml(file: UploadFile = File(...)):
                 "score": verdict.nlp_result.score,
                 "phishing_probability": verdict.nlp_result.phishing_probability,
                 "predicted_intent": verdict.nlp_result.predicted_intent.value if verdict.nlp_result.predicted_intent else None,
-                "urgency_score": verdict.nlp_result.urgency_score,
+                "urgency_score": verdict.nlp_result.urgency_coercion_score,
                 "credential_harvesting": verdict.nlp_result.credential_harvesting_score,
-                "financial_fraud": verdict.nlp_result.financial_fraud_score,
+                "financial_fraud": verdict.nlp_result.financial_fraud_bec_score,
                 "trigger_phrases": verdict.nlp_result.trigger_phrases
             },
             "engine_4_links": verdict.link_result.model_dump(),
