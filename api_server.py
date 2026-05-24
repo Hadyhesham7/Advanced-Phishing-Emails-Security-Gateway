@@ -64,16 +64,24 @@ async def scan_eml(file: UploadFile = File(...)):
         if verdict.nlp_result.trigger_phrases:
             note += f" Trigger phrases found: {', '.join(verdict.nlp_result.trigger_phrases[:3])}."
 
+        # Convert Pydantic results to deeply nested JSON dictionaries
         details = {
             "confidence": verdict.confidence,
-            "metrics": {
-                "header_score": verdict.header_result.score,
-                "structure_score": verdict.structural_result.score,
-                "nlp_score": verdict.nlp_result.score,
-                "links_score": verdict.link_result.score
+            "analysis_time_ms": verdict.analysis_duration_ms,
+            "total_flags": verdict.feature_vector.total_flags_triggered,
+            "engine_1_header": verdict.header_result.model_dump(),
+            "engine_2_structure": verdict.structural_result.model_dump(),
+            "engine_3_nlp": {
+                "score": verdict.nlp_result.score,
+                "phishing_probability": verdict.nlp_result.phishing_probability,
+                "predicted_intent": verdict.nlp_result.predicted_intent.value if verdict.nlp_result.predicted_intent else None,
+                "urgency_score": verdict.nlp_result.urgency_score,
+                "credential_harvesting": verdict.nlp_result.credential_harvesting_score,
+                "financial_fraud": verdict.nlp_result.financial_fraud_score,
+                "trigger_phrases": verdict.nlp_result.trigger_phrases
             },
-            "flags": verdict.feature_vector.total_flags_triggered,
-            "analysis_time_ms": verdict.analysis_duration_ms
+            "engine_4_links": verdict.link_result.model_dump(),
+            "feature_vector": verdict.feature_vector.model_dump()
         }
 
         return {
@@ -81,7 +89,7 @@ async def scan_eml(file: UploadFile = File(...)):
             "score": score,
             "note": note,
             "details": details,
-            "raw_report": details # Include details here in case orchestrator logs it
+            "raw_report": details
         }
 
     except Exception as e:
