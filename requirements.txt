@@ -1,0 +1,42 @@
+# ============================================================
+# Phishing Detection Pipeline - Dependencies
+# Enterprise Email Security Gateway - Deep Content Inspection
+# ============================================================
+
+# --- Core ML / NLP ---
+transformers>=4.40.0            # BERT/RoBERTa for semantic analysis
+torch>=2.2.0                    # PyTorch backend for transformers
+xgboost>=2.0.0                  # ML Aggregator model
+scikit-learn>=1.4.0             # Metrics, preprocessing, train/test split
+numpy>=1.26.0                   # Numerical operations
+pandas>=2.2.0                   # Tabular data handling
+datasets>=2.18.0                # HuggingFace dataset loading for NLP training
+
+# --- NLP Utilities ---
+nltk>=3.8.0                     # Tokenization, stopword removal
+spacy>=3.7.0                    # Advanced NLP entity recognition
+
+# --- HTML & Email Parsing ---
+beautifulsoup4>=4.12.0          # HTML content parsing
+lxml>=5.1.0                     # Fast XML/HTML parser backend
+html5lib>=1.1                   # HTML5 parser fallback
+
+# --- OCR (Image-Only Emails) ---
+Pillow>=10.2.0                  # Image processing
+pytesseract>=0.3.10             # Tesseract OCR wrapper
+easyocr>=1.7.0                  # Alternative neural OCR
+
+# --- URL & Domain Analysis ---
+tldextract>=5.1.0               # Domain/TLD extraction
+python-whois>=0.9.0             # WHOIS domain age lookups
+idna>=3.6                       # Punycode / IDN handling
+Levenshtein>=0.25.0             # Edit distance for typosquatting
+
+# --- Email Parsing ---
+mail-parser>=3.15.0             # RFC-compliant email parsing
+
+# --- Utilities ---
+pyyaml>=6.0                     # Configuration management
+loguru>=0.7.0                   # Structured logging
+pydantic>=2.6.0                 # Data validation & schemas
+httpx>=0.27.0                   # Async HTTP client for URL checks

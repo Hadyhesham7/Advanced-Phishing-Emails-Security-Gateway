@@ -1,0 +1,71 @@
+paypal
+microsoft
+google
+apple
+amazon
+netflix
+chase
+wells fargo
+bank of america
+citibank
+capital one
+american express
+hsbc
+barclays
+usaa
+td bank
+pnc bank
+us bank
+fidelity
+schwab
+vanguard
+stripe
+square
+venmo
+zelle
+coinbase
+binance
+dhl
+fedex
+ups
+usps
+royal mail
+linkedin
+facebook
+instagram
+twitter
+tiktok
+snapchat
+whatsapp
+telegram
+dropbox
+docusign
+adobe
+salesforce
+zoom
+slack
+teams
+onedrive
+sharepoint
+office365
+outlook
+yahoo
+aol
+icloud
+github
+gitlab
+bitbucket
+aws
+azure
+gcp
+cloudflare
+godaddy
+namecheap
+wordpress
+shopify
+ebay
+walmart
+target
+costco
+bestbuy
+home depot

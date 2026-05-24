@@ -1,0 +1,167 @@
+# ============================================================
+# Phishing Detection Pipeline - Configuration
+# Enterprise Email Security Gateway
+# ============================================================
+
+pipeline:
+  name: "PhishGuard Deep Content Inspection Pipeline"
+  version: "1.0.0"
+  log_level: "INFO"
+  parallel_engines: true          # Run engines concurrently
+  timeout_per_engine_sec: 30      # Max time per engine analysis
+
+# ── Engine 1: Advanced Header Analysis ──────────────────────
+engine_header:
+  enabled: true
+  
+  # Display Name Spoofing
+  display_name_spoofing:
+    enabled: true
+    brand_names_file: "data/brand_names.txt"      # Known brand display names
+    similarity_threshold: 0.85                     # Levenshtein ratio
+    weight: 15                                     # Risk score weight
+
+  # Reply-To Mismatch
+  reply_to_mismatch:
+    enabled: true
+    freemail_domains_file: "data/freemail_domains.txt"
+    weight: 10
+
+  # X-Mailer / User-Agent Anomalies
+  xmailer_anomaly:
+    enabled: true
+    suspicious_mailers:
+      - "PHPMailer"
+      - "Kali"
+      - "swaks"
+      - "sendemail"
+      - "Python"
+      - "curl"
+    weight: 10
+
+  # Domain Age & Typosquatting
+  domain_analysis:
+    enabled: true
+    new_domain_threshold_days: 30
+    typosquatting_similarity: 0.80
+    whois_cache_ttl_hours: 24
+    weight_new_domain: 15
+    weight_typosquatting: 20
+
+  max_score: 25
+
+# ── Engine 2: Structural & HTML Analysis ────────────────────
+engine_structure:
+  enabled: true
+
+  # Hidden Text (Bayesian Poisoning)
+  hidden_text:
+    enabled: true
+    detect_methods:
+      - "display_none"
+      - "visibility_hidden"
+      - "zero_font_size"
+      - "matching_fg_bg_color"
+      - "negative_positioning"
+    weight: 15
+
+  # Zero-Width Characters
+  zero_width_chars:
+    enabled: true
+    target_chars:
+      - "\u200B"    # Zero-width space
+      - "\u200C"    # Zero-width non-joiner
+      - "\u200D"    # Zero-width joiner
+      - "\uFEFF"    # Zero-width no-break space
+      - "\u2060"    # Word joiner
+    weight: 10
+
+  # Image-Only Emails
+  image_only:
+    enabled: true
+    min_text_ratio: 0.10          # Below this = image-only
+    ocr_engine: "tesseract"       # tesseract | easyocr
+    weight: 10
+
+  # Brand Impersonation
+  brand_impersonation:
+    enabled: true
+    known_logos_dir: "data/brand_logos/"
+    css_brand_colors_file: "data/brand_colors.json"
+    weight: 15
+
+  max_score: 20
+
+# ── Engine 3: NLP & Semantic Analysis ───────────────────────
+engine_nlp:
+  enabled: true
+
+  model:
+    name: "roberta-base"                          # Base model
+    fine_tuned_path: "models/phishing_roberta/"    # Fine-tuned weights
+    max_sequence_length: 512
+    device: "auto"                                 # auto | cpu | cuda
+    batch_size: 8
+
+  classification: "binary"         # Binary: phishing vs legitimate
+  classes:
+    - legitimate
+    - phishing
+
+  confidence_threshold: 0.60      # Min confidence for phishing label
+  score_multiplier: 30            # NLP probability × this = score
+  max_score: 30
+
+# ── Engine 4: Static Link & Payload Analysis ────────────────
+engine_links:
+  enabled: true
+
+  # Href vs Display Text Mismatch
+  href_mismatch:
+    enabled: true
+    weight: 25
+
+  # URL Obfuscation
+  url_obfuscation:
+    enabled: true
+    shortener_domains_file: "data/url_shorteners.txt"
+    max_path_depth: 5
+    weight: 15
+
+  # Punycode / Homograph Attacks
+  homograph:
+    enabled: true
+    confusables_file: "data/unicode_confusables.json"
+    weight: 20
+
+  max_score: 25
+
+# ── ML Aggregator ──────────────────────────────────────────
+aggregator:
+  model_type: "xgboost"            # Now using the trained XGBoost model
+  model_path: "models/aggregator_xgb.json" # Path to the 24-feature model
+  fallback_to_heuristic: true    # Use weighted sum if model unavailable
+  
+  feature_engineering:
+    include_raw_scores: true
+    include_binary_flags: true
+    include_engine_confidence: true
+    include_cross_engine_features: true
+
+# ── Verdict Thresholds ──────────────────────────────────────
+verdict:
+  threshold: 50    # Score boundary between CLEAN and MALICIOUS
+
+  clean:
+    min: 0
+    max: 50
+    action: "DELIVER"
+    label: "CLEAN"
+
+  malicious:
+    min: 51
+    max: 100
+    action: "DROP"
+    label: "MALICIOUS"
+    route_to_sandbox: true
+    extract_iocs: true

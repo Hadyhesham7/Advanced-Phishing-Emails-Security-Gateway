@@ -1,0 +1,54 @@
+{
+  "version": "v3",
+  "n_features": 30,
+  "feature_names": [
+    "header_score",
+    "structural_score",
+    "nlp_score",
+    "link_score",
+    "display_name_spoofing",
+    "reply_to_mismatch",
+    "xmailer_anomaly",
+    "new_domain",
+    "typosquatting",
+    "hidden_text",
+    "zero_width_chars",
+    "image_only",
+    "brand_impersonation",
+    "href_mismatch",
+    "url_obfuscation",
+    "homograph_attack",
+    "nlp_phishing_probability",
+    "nlp_intent_confidence",
+    "urgency_score",
+    "credential_harvesting_score",
+    "financial_fraud_score",
+    "header_x_link_risk",
+    "nlp_x_structure_risk",
+    "total_flags_triggered",
+    "credential_form_detected",
+    "image_wrapped_links",
+    "suspicious_tld_count",
+    "login_url_pattern",
+    "oauth_consent_score",
+    "auth_failure_detected"
+  ],
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "auc_roc": 1.0,
+  "train_samples": 6400,
+  "test_samples": 1600,
+  "training_time_seconds": 15854.9,
+  "confusion_matrix": [
+    [
+      1100,
+      0
+    ],
+    [
+      0,
+      500
+    ]
+  ]
+}

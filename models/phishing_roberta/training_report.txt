@@ -1,0 +1,32 @@
+Training Results
+==================================================
+
+Model: roberta-base
+Epochs: 2
+Batch Size: 8
+Learning Rate: 2e-05
+Dataset: data/phishing_labeled_small.csv
+Train Samples: 3200
+Eval Samples: 800
+
+Evaluation Metrics:
+  eval_loss: 0.12586762011051178
+  eval_accuracy: 0.97125
+  eval_f1_macro: 0.9712424061978866
+  eval_f1_weighted: 0.9712424061978866
+  eval_precision_macro: 0.9717482841251072
+  eval_recall_macro: 0.97125
+  eval_runtime: 193.0097
+  eval_samples_per_second: 4.145
+  eval_steps_per_second: 0.259
+  epoch: 2.0
+
+Classification Report:
+              precision    recall  f1-score   support
+
+  legitimate       0.99      0.95      0.97       400
+    phishing       0.96      0.99      0.97       400
+
+    accuracy                           0.97       800
+   macro avg       0.97      0.97      0.97       800
+weighted avg       0.97      0.97      0.97       800
