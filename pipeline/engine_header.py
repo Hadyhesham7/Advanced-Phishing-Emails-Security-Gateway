@@ -212,24 +212,38 @@ class HeaderAnalysisEngine:
         result.display_name_claimed = display_name
         result.display_name_actual_domain = from_domain
 
+        matched_brands = []
         for brand in self.brand_names:
             brand_clean = brand.replace(" ", "")
             if brand_clean in display_normalized:
-                # Check if the from domain legitimately contains the brand
-                if brand_clean not in from_domain:
-                    result.display_name_spoofing_detected = True
-                    weight = self.config.get(
-                        "display_name_spoofing", {}
-                    ).get("weight", 15)
-                    result.display_name_spoofing_score = weight
-                    result.raw_signals["spoofed_brand"] = brand
-                    result.raw_signals["claimed_display"] = display_name
-                    result.raw_signals["actual_domain"] = from_domain
-                    logger.warning(
-                        f"Display name spoofing: '{display_name}' "
-                        f"from domain '{from_domain}'"
-                    )
-                    break
+                matched_brands.append((brand, brand_clean))
+
+        if not matched_brands:
+            return
+
+        # If ANY of the matched brands legitimately appear in the from_domain,
+        # then the sender is legitimate. (e.g., Display Name "Microsoft Azure" 
+        # from "microsoft.com" is legit because "microsoft" matches, even if 
+        # "azure" is not in the domain).
+        is_legit = any(b_clean in from_domain for _, b_clean in matched_brands)
+
+        if not is_legit:
+            # Sort by length descending to flag the most specific brand
+            matched_brands.sort(key=lambda x: len(x[1]), reverse=True)
+            spoofed_brand = matched_brands[0][0]
+            
+            result.display_name_spoofing_detected = True
+            weight = self.config.get(
+                "display_name_spoofing", {}
+            ).get("weight", 15)
+            result.display_name_spoofing_score = weight
+            result.raw_signals["spoofed_brand"] = spoofed_brand
+            result.raw_signals["claimed_display"] = display_name
+            result.raw_signals["actual_domain"] = from_domain
+            logger.warning(
+                f"Display name spoofing: '{display_name}' "
+                f"from domain '{from_domain}'"
+            )
 
     def _check_reply_to_mismatch(
         self, msg: email.message.Message, result: HeaderAnalysisResult
@@ -260,7 +274,14 @@ class HeaderAnalysisEngine:
 
         result.reply_to_address = reply_to_addr
 
-        if from_domain != reply_domain:
+        # Compare BASE (registered) domains, not full subdomains.
+        # Legitimate companies use subdomains for Reply-To:
+        #   uber.com → replies.uber.com (same org, not suspicious)
+        #   tiktok.com → edm.feedback@tiktok.com (same org)
+        from_base = self._get_base_domain(from_domain)
+        reply_base = self._get_base_domain(reply_domain)
+
+        if from_base != reply_base:
             # Extra penalty if reply-to is a freemail domain
             is_freemail = reply_domain in self.freemail_domains
             result.reply_to_mismatch_detected = True
@@ -543,3 +564,25 @@ class HeaderAnalysisEngine:
         for fake, real in HOMOGLYPH_MAP.items():
             normalized = normalized.replace(fake, real)
         return normalized
+
+    @staticmethod
+    def _get_base_domain(domain: str) -> str:
+        """
+        Extract the registerable base domain from a full domain.
+
+        Uses tldextract for accurate TLD-aware extraction.
+        Example: 'replies.uber.com' → 'uber.com'
+                 'service.tiktok.com' → 'tiktok.com'
+        """
+        try:
+            import tldextract
+            extracted = tldextract.extract(domain)
+            if extracted.domain and extracted.suffix:
+                return f"{extracted.domain}.{extracted.suffix}"
+            return domain
+        except ImportError:
+            # Fallback: naive last-two-segments extraction
+            parts = domain.split(".")
+            if len(parts) >= 2:
+                return ".".join(parts[-2:])
+            return domain

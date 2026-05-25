@@ -34,7 +34,7 @@ URL_SHORTENER_DOMAINS: set[str] = {
 
 # ── Suspicious TLDs ─────────────────────────────────────────
 SUSPICIOUS_TLDS: set[str] = {
-    ".xyz", ".top", ".club", ".work", ".click", ".link", ".info",
+    ".xyz", ".top", ".club", ".work", ".click", ".info",
     ".buzz", ".icu", ".rest", ".surf", ".monster", ".site",
     ".online", ".space", ".fun", ".gq", ".ml", ".cf", ".ga", ".tk",
 }
@@ -469,13 +469,34 @@ class LinkAnalysisEngine:
                 break
 
         # Check 2: Excessive path depth
-        max_depth = self.config.get("url_obfuscation", {}).get(
-            "max_path_depth", 5
+        # BUT: Skip for known legitimate email tracking domains.
+        # Marketing platforms (SendGrid, Mailchimp, Uber, etc.) use
+        # long Base64-encoded tracking paths that look "deep" but are benign.
+        known_tracking_patterns = [
+            ".mgm.", ".sendgrid.", ".mailchimp.", ".campaign-archive.",
+            ".list-manage.", ".exact-target.", ".salesforce.",
+            ".hubspot.", ".mailgun.", ".constantcontact.",
+            ".pardot.", ".marketo.", ".eloqua.", ".moengage.",
+            ".braze.", ".iterable.", ".sendinblue.", ".klaviyo.",
+            ".sng.link", ".branch.io", ".app.link",
+            ".tiktok.com", ".uber.com",
+        ]
+        is_tracking_domain = any(
+            pattern in hostname or hostname.endswith(pattern.lstrip("."))
+            for pattern in known_tracking_patterns
         )
-        path_segments = [s for s in path.split("/") if s]
-        if len(path_segments) > max_depth:
-            obfuscation_detected = True
-            result.raw_signals["deep_path_url"] = href
+
+        image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico")
+        is_image_asset = path.lower().endswith(image_extensions) or "cloudfront.net" in hostname
+
+        if not is_tracking_domain and not is_image_asset:
+            max_depth = self.config.get("url_obfuscation", {}).get(
+                "max_path_depth", 5
+            )
+            path_segments = [s for s in path.split("/") if s]
+            if len(path_segments) > max_depth:
+                obfuscation_detected = True
+                result.raw_signals["deep_path_url"] = href
 
         # Check 3: IP address as hostname
         ip_pattern = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
@@ -490,8 +511,8 @@ class LinkAnalysisEngine:
             obfuscation_detected = True
             result.raw_signals["heavy_encoding_url"] = href
 
-        # Check 5: @ symbol abuse
-        if "@" in href and not href.startswith("mailto:"):
+        # Check 5: @ symbol abuse (Basic Auth in URL)
+        if parsed.username is not None and not href.startswith("mailto:"):
             obfuscation_detected = True
             result.raw_signals["at_symbol_abuse"] = href
 

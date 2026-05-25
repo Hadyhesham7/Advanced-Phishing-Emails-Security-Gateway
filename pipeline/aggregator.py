@@ -171,7 +171,28 @@ class MLAggregator:
         fv.hidden_text = int(structure.hidden_text_detected)
         fv.zero_width_chars = int(structure.zero_width_chars_detected)
         fv.image_only = int(structure.image_only_email)
-        fv.brand_impersonation = int(structure.brand_impersonation_detected)
+
+        # ── Cross-Engine Validation: Brand Impersonation ────────
+        # Engine 2 flags brand impersonation if it sees a brand logo,
+        # but only Aggregator knows if the sender domain legitimately matches!
+        if structure.brand_impersonation_detected:
+            impersonated = structure.raw_signals.get("impersonated_brand", "")
+            actual_domain = header.raw_signals.get("actual_domain", "")
+            
+            # If the brand name legitimately appears in the sender's domain,
+            # it is NOT impersonation, it is the actual brand emailing!
+            if impersonated and impersonated in actual_domain:
+                fv.brand_impersonation = 0
+                fv.structural_score -= structure.brand_impersonation_score
+                logger.info(
+                    f"[Aggregator] Negating Brand Impersonation: '{impersonated}' "
+                    f"is legitimately in sender domain '{actual_domain}'"
+                )
+            else:
+                fv.brand_impersonation = 1
+        else:
+            fv.brand_impersonation = 0
+
         fv.href_mismatch = int(links.href_mismatch_detected)
         fv.url_obfuscation = int(links.url_obfuscation_detected)
         fv.homograph_attack = int(links.homograph_attack_detected)
@@ -372,16 +393,22 @@ class MLAggregator:
                     f"Image-only email with high link risk ({links.score}/25)"
                 )
 
-        # Override 3: Max Link Score (25/25) + any structural flag
-        # If Engine 4 is maxed out AND Engine 2 found something, override
+        # Override 3: Max Link Score (25/25) + structural flag + corroboration
+        # Only override if there's ADDITIONAL evidence from NLP or Header.
+        # Without corroboration, this pattern matches legitimate marketing emails
+        # (which have tracking URLs + preheader CSS = high link + structure scores).
         if links.score >= 25 and structure.score >= 10:
-            min_score = 60.0
-            if adjusted_score < min_score:
-                adjusted_score = min_score
-                override_reason = (
-                    f"Maximum link risk ({links.score}/25) combined with "
-                    f"structural anomalies ({structure.score}/20)"
-                )
+            has_nlp_signal = nlp.score > 0 or nlp.phishing_probability > 0.3
+            has_header_signal = header.score >= 15
+            if has_nlp_signal or has_header_signal:
+                min_score = 60.0
+                if adjusted_score < min_score:
+                    adjusted_score = min_score
+                    override_reason = (
+                        f"Maximum link risk ({links.score}/25) combined with "
+                        f"structural anomalies ({structure.score}/20) and "
+                        f"corroborating evidence (NLP={nlp.score}, Header={header.score})"
+                    )
 
         # Override 4: Display Name Spoofing + any link threat
         # If the sender is spoofing a brand AND links are suspicious
@@ -394,9 +421,11 @@ class MLAggregator:
                     f"({links.score}/25)"
                 )
 
-        # Override 5: 4+ flags triggered but ML says clean
-        # If many independent signals fire, something is wrong
-        if feature_vector.total_flags_triggered >= 4 and adjusted_score < 55:
+        # Override 5: 5+ flags triggered but ML says clean
+        # Raised from 4 to 5 because legitimate marketing emails commonly
+        # trigger 4 flags (subdomain reply-to, preheader CSS, tracking URLs,
+        # image banners).
+        if feature_vector.total_flags_triggered >= 5 and adjusted_score < 55:
             min_score = 55.0
             adjusted_score = min_score
             override_reason = (

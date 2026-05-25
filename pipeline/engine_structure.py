@@ -194,11 +194,43 @@ class StructuralAnalysisEngine:
 
         if detected_methods:
             result.hidden_text_detected = True
-            result.hidden_text_methods = list(set(detected_methods))
+            unique_methods = list(set(detected_methods))
+            result.hidden_text_methods = unique_methods
             result.hidden_text_content = " | ".join(hidden_content_parts[:5])
-            weight = self.config.get("hidden_text", {}).get("weight", 15)
-            result.hidden_text_score = weight
             result.raw_signals["hidden_text_methods"] = result.hidden_text_methods
+
+            # Graduated scoring: legitimate marketing emails commonly use
+            # 1-2 CSS hiding methods (preheader text, responsive design).
+            # Only escalate the score when MANY distinct methods appear
+            # or when actual hidden content was extracted.
+            max_weight = self.config.get("hidden_text", {}).get("weight", 15)
+            num_unique = len(unique_methods)
+            has_content = len(hidden_content_parts) > 0
+
+            # Filter out common legitimate patterns
+            legitimate_methods = {
+                "display_none_in_stylesheet",  # CSS resets / responsive design
+                "zero_font_size_in_stylesheet",  # preheader text pattern
+            }
+            suspicious_methods = [m for m in unique_methods if m not in legitimate_methods]
+            num_suspicious = len(suspicious_methods)
+
+            if num_suspicious == 0:
+                # Only benign stylesheet-level hiding → minimal score
+                weight = 2
+            elif num_suspicious == 1 and not has_content:
+                # 1 inline method, no actual hidden text → likely preheader
+                weight = 3
+            elif num_suspicious == 1 and has_content:
+                weight = 6
+            elif num_suspicious == 2:
+                weight = 9
+            elif num_suspicious >= 3:
+                weight = max_weight
+            else:
+                weight = 5
+
+            result.hidden_text_score = min(weight, max_weight)
 
     def _check_matching_colors(
         self,
