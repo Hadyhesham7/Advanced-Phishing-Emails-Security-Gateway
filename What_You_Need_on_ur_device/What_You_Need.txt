@@ -1,0 +1,29 @@
+1. Download the Project (Crucial Step)
+You must ensure Git LFS is installed so it actually downloads the heavy ML models:
+
+bash
+
+
+# First, install Git LFS on the new PC (only needs to be done once per machine)
+git lfs install
+# Then clone your repository
+git clone https://github.com/Hadyhesham7/Advanced-Phishing-Emails-Security-Gateway.git
+cd Advanced-Phishing-Emails-Security-Gateway
+2. Setup the Environment
+bash
+
+
+# Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate   # (Windows)
+# OR source .venv/bin/activate (Mac/Linux)
+# Install all dependencies
+pip install -r requirements.txt
+# Download the spaCy language model
+python -m spacy download en_core_web_sm
+3. Run It!
+bash
+
+
+python demo.py
+As long as you remember git lfs install before cloning, the pipeline will work flawlessly out of the box with zero retraining required!
